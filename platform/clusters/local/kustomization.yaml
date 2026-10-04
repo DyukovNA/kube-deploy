@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespaces.yaml
+  - repository.yaml
+  - project.yaml
+  - apps/envoy-crds.yaml
+  - apps/envoy-gateway.yaml
+  - apps/gatekeeper.yaml
+  - apps/gateway.yaml
+  - apps/policies.yaml
+replacements:
+  - source:
+      kind: ConfigMap
+      name: kube-deploy-repository
+      fieldPath: data.url
+    targets:
+      - select:
+          kind: AppProject
+          name: kube-deploy-platform
+        fieldPaths:
+          - spec.sourceRepos.0
+      - select:
+          kind: Application
+          name: kube-deploy-gateway
+        fieldPaths:
+          - spec.source.repoURL
+      - select:
+          kind: Application
+          name: kube-deploy-policies
+        fieldPaths:
+          - spec.source.repoURL

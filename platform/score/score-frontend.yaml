@@ -1,0 +1,39 @@
+apiVersion: score.dev/v1b1
+metadata:
+  name: frontend
+  revision: local
+containers:
+  web:
+    image: .
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 8080
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 8080
+service:
+  ports:
+    web:
+      port: 8080
+      targetPort: 8080
+resources:
+  dns:
+    type: dns
+    class: local
+    id: local
+  route:
+    type: route
+    class: gateway
+    params:
+      host: ${resources.dns.host}
+      path: /
+      port: 8080

@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rejected-privileged-deployment
+  namespace: kube-deploy-demo
+spec:
+  selector:
+    matchLabels: {app: rejected-privileged-deployment}
+  template:
+    metadata:
+      labels: {app: rejected-privileged-deployment}
+    spec:
+      containers:
+        - name: bad
+          image: busybox:1.37
+          command: ["sleep", "3600"]
+          securityContext:
+            privileged: true
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}

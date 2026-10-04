@@ -1,0 +1,19 @@
+image:
+  repository: postgres
+  tag: 17.11-alpine
+  digest: sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+database:
+  name: kubedeploy
+  user: kubedeploy
+  existingSecret: demo-postgres-credentials
+  passwordKey: password
+storage:
+  size: 2Gi
+  storageClassName: local-path
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - templates/privileged.yaml
+  - templates/resources.yaml
+  - templates/image-tags.yaml
+  - constraints/privileged.yaml
+  - constraints/resources.yaml
+  - constraints/image-tags.yaml
+  - expansion.yaml

@@ -1,0 +1,39 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sdisallowedimagetags
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sDisallowedImageTags
+      validation:
+        openAPIV3Schema:
+          type: object
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sdisallowedimagetags
+
+        checked[container] {
+          container := input.review.object.spec.containers[_]
+        }
+        checked[container] {
+          container := input.review.object.spec.initContainers[_]
+        }
+        checked[container] {
+          container := input.review.object.spec.ephemeralContainers[_]
+        }
+        violation[{"msg": msg}] {
+          container := checked[_]
+          endswith(lower(container.image), ":latest")
+          msg := sprintf("container %q uses :latest", [container.name])
+        }
+        violation[{"msg": msg}] {
+          container := checked[_]
+          not contains(container.image, "@sha256:")
+          parts := split(container.image, "/")
+          last := parts[count(parts) - 1]
+          not contains(last, ":")
+          msg := sprintf("container %q has no image tag or digest", [container.name])
+        }

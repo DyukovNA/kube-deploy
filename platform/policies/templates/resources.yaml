@@ -1,0 +1,48 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredresources
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredResources
+      validation:
+        openAPIV3Schema:
+          type: object
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredresources
+
+        checked[container] {
+          container := input.review.object.spec.containers[_]
+        }
+        checked[container] {
+          container := input.review.object.spec.initContainers[_]
+        }
+        missing_resource(container, section, resource) {
+          values := object.get(object.get(container, "resources", {}), section, {})
+          value := object.get(values, resource, "")
+          value == ""
+        }
+        violation[{"msg": msg}] {
+          container := checked[_]
+          missing_resource(container, "requests", "cpu")
+          msg := sprintf("container %q needs requests.cpu", [container.name])
+        }
+        violation[{"msg": msg}] {
+          container := checked[_]
+          missing_resource(container, "requests", "memory")
+          msg := sprintf("container %q needs requests.memory", [container.name])
+        }
+        violation[{"msg": msg}] {
+          container := checked[_]
+          missing_resource(container, "limits", "cpu")
+          msg := sprintf("container %q needs limits.cpu", [container.name])
+        }
+        violation[{"msg": msg}] {
+          container := checked[_]
+          missing_resource(container, "limits", "memory")
+          msg := sprintf("container %q needs limits.memory", [container.name])
+        }

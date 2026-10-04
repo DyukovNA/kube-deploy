@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-deploy-demo
+  labels:
+    app.kubernetes.io/part-of: kube-deploy
+    policy.kubedeploy.io/enforced: "true"
+    gateway-access.kubedeploy.io/enabled: "true"

@@ -1,0 +1,67 @@
+- uri: template://kubedeploy/dns-local
+  type: dns
+  class: local
+  id: local
+  description: Fixed local demo hostname.
+  outputs: |
+    host: kube-deploy.local
+  expected_outputs:
+    - host
+
+- uri: template://kubedeploy/postgres-helm
+  type: postgres
+  class: helm
+  id: demo-postgres
+  description: Connect to the pre-existing Helm PostgreSQL release.
+  outputs: |
+    host: demo-postgres
+    port: 5432
+    name: kubedeploy
+    username: kubedeploy
+    password: {{ encodeSecretRef "demo-postgres-credentials" "password" }}
+  expected_outputs:
+    - host
+    - port
+    - name
+    - username
+    - password
+
+- uri: template://kubedeploy/route-gateway
+  type: route
+  class: gateway
+  description: Attach an HTTPRoute to the shared platform Gateway.
+  init: |
+    {{ if not (regexMatch "^/" .Params.path) }}{{ fail "route path must start with /" }}{{ end }}
+    {{ if not (regexMatch "^[a-z0-9.-]+$" .Params.host) }}{{ fail "route host is invalid" }}{{ end }}
+    {{ $ports := (index .WorkloadServices .SourceWorkload).Ports }}
+    {{ $port := index $ports (print .Params.port) }}
+    {{ if not $port.TargetPort }}{{ fail "route port does not match a Service port" }}{{ end }}
+  state: |
+    routeName: route-{{ .SourceWorkload }}-{{ substr 0 8 .Guid | lower }}
+  manifests: |
+    - apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: {{ .State.routeName }}
+        namespace: {{ .Namespace }}
+        labels:
+          app.kubernetes.io/managed-by: score-k8s
+          kubedeploy.io/part-of: demo
+      spec:
+        parentRefs:
+          - name: kube-deploy
+            namespace: kube-deploy-system
+        hostnames:
+          - {{ .Params.host | quote }}
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: {{ .Params.path | quote }}
+            backendRefs:
+              - name: {{ (index .WorkloadServices .SourceWorkload).ServiceName }}
+                port: {{ .Params.port }}
+  supported_params:
+    - host
+    - path
+    - port

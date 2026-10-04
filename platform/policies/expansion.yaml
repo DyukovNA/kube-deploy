@@ -1,0 +1,14 @@
+apiVersion: expansion.gatekeeper.sh/v1alpha1
+kind: ExpansionTemplate
+metadata:
+  name: expand-demo-workloads
+spec:
+  applyTo:
+    - groups: ["apps"]
+      kinds: ["Deployment", "StatefulSet", "DaemonSet"]
+      versions: ["v1"]
+  templateSource: spec.template
+  generatedGVK:
+    group: ""
+    version: v1
+    kind: Pod

@@ -1,0 +1,52 @@
+apiVersion: score.dev/v1b1
+metadata:
+  name: backend
+  revision: local
+containers:
+  api:
+    image: .
+    variables:
+      PORT: "8080"
+      DB_HOST: ${resources.db.host}
+      DB_PORT: ${resources.db.port}
+      DB_NAME: ${resources.db.name}
+      DB_USER: ${resources.db.username}
+      DB_PASSWORD: ${resources.db.password}
+      BUILD_VERSION: sha-${metadata.revision}
+      BUILD_COMMIT: ${metadata.revision}
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+    readinessProbe:
+      httpGet:
+        path: /api/health/ready
+        port: 8080
+    livenessProbe:
+      httpGet:
+        path: /api/health/live
+        port: 8080
+service:
+  ports:
+    api:
+      port: 8080
+      targetPort: 8080
+resources:
+  db:
+    type: postgres
+    class: helm
+    id: demo-postgres
+  dns:
+    type: dns
+    class: local
+    id: local
+  route:
+    type: route
+    class: gateway
+    params:
+      host: ${resources.dns.host}
+      path: /api
+      port: 8080

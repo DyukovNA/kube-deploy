@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rejected-no-resources
+  namespace: kube-deploy-demo
+spec:
+  containers:
+    - name: bad
+      image: busybox:1.37
+      command: ["sleep", "3600"]
