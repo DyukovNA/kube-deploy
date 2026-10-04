@@ -8,7 +8,7 @@ metadata:
 spec:
   description: System resources only; demo Deployments and Services are Score-owned.
   sourceRepos:
-    - https://example.invalid/kube-deploy.git
+    - https://github.com/DyukovNA/kube-deploy.git
     - docker.io/envoyproxy
     - https://open-policy-agent.github.io/gatekeeper/charts
   destinations:

@@ -8,7 +8,7 @@ metadata:
 spec:
   project: kube-deploy-platform
   source:
-    repoURL: https://example.invalid/kube-deploy.git
+    repoURL: https://github.com/DyukovNA/kube-deploy.git
     targetRevision: main
     path: platform/gateway
   destination:

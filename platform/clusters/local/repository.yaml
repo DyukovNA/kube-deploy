@@ -5,4 +5,4 @@ metadata:
   namespace: argocd
 data:
   # Replace only after the GitHub repository and visibility are agreed.
-  url: https://example.invalid/kube-deploy.git
+  url: https://github.com/DyukovNA/kube-deploy.git
