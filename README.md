@@ -1,43 +1,81 @@
 # KubeDeploy Platform
 
-Локальная учебная платформа декларативного развёртывания в Kubernetes. Git хранит системную конфигурацию и описания приложений; Argo CD синхронизирует системный слой, а Score генерирует ресурсы frontend и backend. PostgreSQL развёртывается Helm-чартом.
+Локальная учебная платформа декларативного развёртывания в Kubernetes. Git и Argo CD управляют системным слоем, Score генерирует ресурсы frontend/backend, Helm развёртывает PostgreSQL, а Gatekeeper блокирует небезопасные workload.
 
-Сейчас подготовлены приложение, контейнеры, локальный k3d, PostgreSQL, Score и политики; системный GitOps-контур и полный deploy ещё в работе. Архитектура, этапы и критерии приёмки находятся в [плане](IMPLEMENTATION_PLAN.md); принятые технические решения и ссылки на upstream — в [исследовании](docs/implementation-research.md).
+Рабочий контур проверен 7 октября 2026 года: CI и Release завершены успешно, образы опубликованы в GHCR с SBOM/provenance/attestations, все Argo CD Application находятся в `Synced/Healthy`, приложение доступно через Envoy Gateway, smoke пишет и читает данные PostgreSQL, Gatekeeper отклоняет три класса нарушений, а Argo CD устраняет контролируемый drift.
 
-## Доставка на одном Mac
+## Архитектура
 
-GitHub Actions будет тестировать, собирать, сканировать и публиковать образы в GHCR. После успешного выпуска разработчик запускает `make deploy IMAGE_TAG=sha-<commit>` на Mac с локальным k3d. Отдельный Linux runner и второй компьютер для MVP не нужны. Команда deploy проверяет происхождение и digest образов перед применением; до первого полного сквозного прогона публикацию образов нельзя считать развёртыванием.
+```text
+GitHub repository
+├── platform/ ── Argo CD ── Kustomize/Helm ── Envoy Gateway + Gatekeeper
+└── apps/ + Score ── GitHub Actions ── GHCR ── local make deploy ── k3d
+                                                       ├── frontend
+                                                       ├── backend
+                                                       └── PostgreSQL (Helm/PVC)
+```
 
-## Начало работы
+Argo CD синхронизирует только системные компоненты. Пользовательские workload генерируются `score-k8s`, проходят schema/policy/admission-проверки и применяются локальным CD. Kubeconfig и секреты не передаются в GitHub.
+
+Подробности: [архитектура](docs/architecture.md), [CI/CD](docs/ci-cd.md), [безопасность](docs/security.md), [матрица версий](docs/version-matrix.md).
+
+## Быстрый запуск
+
+Нужны Docker Desktop и авторизованный GitHub CLI. Закреплённые CLI уже устанавливаются в `.tools/bin`; проверить окружение:
 
 ```sh
 make doctor
+gh auth status
+gh auth token | docker login ghcr.io -u DyukovNA --password-stdin
 ```
 
-Команда показывает установленные и отсутствующие CLI, различия с закреплёнными версиями и доступность Docker. Потребуются Go, Node.js, Docker, k3d, kubectl, Helm 4 и инструменты в [матрице версий](docs/version-matrix.md).
-
-Текущие локальные шаги:
+Поднять или возобновить локальный контур и развернуть текущий опубликованный SHA:
 
 ```sh
 make cluster-up
-make argocd-up
-make database-up
-make test lint
+make bootstrap
+SHA="$(git rev-parse HEAD)"
+make deploy IMAGE_TAG="sha-$SHA"
 ```
 
-`make argocd-up` ставит только контроллер Argo CD. Системные дочерние Application ещё не подключены: для `make bootstrap` нужен согласованный публичный GitHub remote с текущим коммитом в `main`. После успешного GitHub release команда `make deploy IMAGE_TAG=sha-<40-символьный commit>` проверит аттестации образов и применит Score-манифесты. Пока remote и release отсутствуют, команду deploy считать подготовленной, но не прошедшей сквозную проверку.
+`make deploy` допускает только чистый checkout текущего commit из `origin/main`, проверяет digest и GitHub attestation обоих образов, восстанавливает Score state, обновляет PostgreSQL, валидирует/применяет манифесты и выполняет smoke.
 
-Локальные Trivy-проверки итоговых frontend/backend образов: 0 исправимых HIGH/CRITICAL (2026-10-05). Официальный PostgreSQL 17.11 image уменьшил число находок, но его вспомогательный бинарник `gosu` по-прежнему содержит исправимые HIGH в Go standard library; это открытый риск для учебного локального окружения, а не исключение из проверки release-образов приложения.
+Полный повторяемый прогон с локальным evidence log и JUnit XML:
 
-## Статус
+```sh
+make e2e IMAGE_TAG="sha-$(git rev-parse HEAD)"
+```
 
-- [x] Исходное задание и план реализации
-- [x] Решение о локальном CD без self-hosted runner
-- [x] Каркас, backend, frontend и контейнеры (локальные тесты)
-- [x] k3d, PostgreSQL chart, Score generation, Argo CD controller и локальные policy tests
-- [ ] Gateway API, Gatekeeper и управляемый Argo CD системный слой
-- [ ] Локальное развёртывание полного приложения
-- [x] CI/release workflow-файлы и локальная проверка их синтаксиса
-- [ ] Выполнение GitHub Actions, сквозные проверки и сценарий защиты
+Артефакты прогона записываются в игнорируемый каталог `build/evidence/`; значения Secret, kubeconfig и токены туда не попадают.
 
-Порядок сквозной проверки и её ещё не подтверждённые шаги описаны в [сценарии демонстрации](docs/demo-scenario.md).
+## Проверки
+
+```sh
+make test lint
+make test-backend-integration
+make test-backend-container
+make demo-policy
+make demo-drift
+make smoke REVISION="$(git rev-parse HEAD)"
+```
+
+- `demo-policy` доказывает server-side admission denial для privileged-контейнера, `latest` и отсутствующих requests/limits.
+- `demo-drift` безопасно меняет replica count Envoy Gateway с 1 на 2 и ждёт, пока Argo CD вернёт Git-state.
+- `cluster-down` удаляет только кластер `kube-deploy` и отказывается работать при другом current context.
+
+Пошаговый сценарий защиты находится в [docs/demo-scenario.md](docs/demo-scenario.md), устранение типовых сбоев — в [docs/troubleshooting.md](docs/troubleshooting.md).
+
+## Статус требований
+
+- [x] k3d/K3s и воспроизводимый lifecycle
+- [x] Kustomize + Argo CD для системного слоя
+- [x] Envoy Gateway и Gateway API
+- [x] Score-generated frontend/backend без ручных Deployment/Service
+- [x] PostgreSQL через Helm с сохраняемым PVC
+- [x] Gatekeeper: privileged, resources, image tags
+- [x] GitHub Actions CI, Trivy, GHCR, SBOM/provenance/attestations
+- [x] Локальный CD с проверкой SHA, digest и provenance
+- [x] Smoke, admission denial и Argo self-heal
+- [x] Автоматизированный e2e и evidence/JUnit output
+
+Осознанно не входят в MVP: cloud/Terraform, production HA, service mesh, Cilium, observability stack, secrets operator и автоматический доступ GitHub runner к локальному kubeconfig.

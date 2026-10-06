@@ -1,6 +1,6 @@
 # Матрица версий
 
-Проверено 2026-10-04 по upstream release pages. Это зафиксированные версии; совместимость всего набора подтвердит только полный clean-cluster e2e. Источники истины для версий: `.tool-versions` для Go/Node и `scripts/versions.env` для платформы.
+Версии выбраны по upstream release pages и проверены совместным локальным прогоном 2026-10-07. Источники истины: `.tool-versions` для Go/Node и `scripts/versions.env` для платформы.
 
 | Компонент | Версия | Основание |
 |---|---|---|
@@ -22,4 +22,4 @@
 | Caddy runtime image | 2.11.6-alpine | `sha256:d44355d3c2149dc580ce2cac735955d1c08d3d00882c30489c241aa51a5c10d9`; локальный Trivy 2026-10-05: 0 исправимых HIGH/CRITICAL |
 | PostgreSQL image | 17.11-alpine | [официальные release notes](https://www.postgresql.org/docs/17/release-17-11.html); `sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24` |
 
-Рендер Envoy Gateway, Envoy CRD и Gatekeeper charts проходит локальную синтаксическую/schema-проверку; их совместная работа в кластере пока не подтверждена. Argo CD bootstrap зафиксирован на release commit `c9c369efcc5b2a0bd720803f8d14a1c3eaddf579` и уже запущен в локальном кластере. Обновление версии требует повторного e2e. Встроенный `kubectl kustomize` не считается отдельным Kustomize CLI.
+Envoy Gateway, Gateway API CRD и Gatekeeper совместно работают в k3d: child Applications `Synced/Healthy`, Gateway `Programmed`, HTTPRoute `Accepted/ResolvedRefs`, admission denial и self-heal подтверждены. Argo CD bootstrap закреплён на release commit `c9c369efcc5b2a0bd720803f8d14a1c3eaddf579`. Любое обновление версии требует повторного `make e2e`; встроенный `kubectl kustomize` не заменяет отдельный закреплённый Kustomize CLI.

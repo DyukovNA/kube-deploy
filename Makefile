@@ -1,9 +1,9 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
-.PHONY: help doctor doctor-ci cluster-up argocd-up bootstrap database-up render validate-generated deploy smoke test test-policies test-backend-integration test-backend-container lint
+.PHONY: help doctor doctor-ci cluster-up cluster-down argocd-up bootstrap database-up render validate-generated deploy smoke demo-policy demo-drift e2e test test-policies test-backend-integration test-backend-container lint
 
 help:
-	@printf '%s\n' 'Targets:' '  doctor     Report local prerequisites and pinned version mismatches' '  doctor-ci  Check tools needed for CI validation' '  cluster-up Create or inspect the dedicated k3d cluster' '  argocd-up  Install the pinned Argo CD controller only' '  database-up Install/upgrade PostgreSQL in kube-deploy-demo' '  render     Generate Score manifests from immutable image refs' '  validate-generated  Check generated YAML schemas and policies' '  deploy IMAGE_TAG=sha-...  Verify and deploy a published release' '  smoke      Check routed UI, API, and PostgreSQL persistence' '  test       Run application and policy tests' '  test-policies  Check negative policy fixtures' '  test-backend-integration  Test backend against disposable PostgreSQL' '  test-backend-container  Smoke test backend image with PostgreSQL' '  lint       Run available source checks'
+	@printf '%s\n' 'Targets:' '  doctor     Report local prerequisites and pinned version mismatches' '  doctor-ci  Check tools needed for CI validation' '  cluster-up Create, start, or inspect the dedicated k3d cluster' '  cluster-down  Delete only the dedicated kube-deploy cluster' '  argocd-up  Install the pinned Argo CD controller only' '  bootstrap  Reconcile the complete Argo CD system layer' '  database-up Install/upgrade PostgreSQL in kube-deploy-demo' '  render     Generate Score manifests from immutable image refs' '  validate-generated  Check generated YAML schemas and policies' '  deploy IMAGE_TAG=sha-...  Verify and deploy a published release' '  smoke      Check routed UI, API, and PostgreSQL persistence' '  demo-policy  Prove Gatekeeper admission rejects three bad workloads' '  demo-drift  Prove Argo CD self-heals a safe replica-count drift' '  e2e IMAGE_TAG=sha-...  Run bootstrap, deploy, smoke, policy, and self-heal checks' '  test       Run application and policy tests' '  test-policies  Check negative policy fixtures' '  test-backend-integration  Test backend against disposable PostgreSQL' '  test-backend-container  Smoke test backend image with PostgreSQL' '  lint       Run available source checks'
 
 doctor:
 	@bash scripts/doctor.sh
@@ -13,6 +13,9 @@ doctor-ci:
 
 cluster-up:
 	@bash scripts/cluster-up.sh
+
+cluster-down:
+	@bash scripts/cluster-down.sh
 
 argocd-up:
 	@bash scripts/argocd-up.sh
@@ -34,6 +37,15 @@ deploy:
 
 smoke:
 	@REVISION='$(REVISION)' bash scripts/smoke.sh
+
+demo-policy:
+	@bash scripts/demo-policy-denial.sh
+
+demo-drift:
+	@bash scripts/demo-self-heal.sh
+
+e2e:
+	@IMAGE_TAG='$(IMAGE_TAG)' bash scripts/e2e.sh
 
 test:
 	@if test -f apps/backend/go.mod; then cd apps/backend && go test ./...; else printf '%s\n' 'Backend not implemented yet'; fi

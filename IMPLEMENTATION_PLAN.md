@@ -1,6 +1,6 @@
 # KubeDeploy Platform — план реализации
 
-Статус: план готов к реализации
+Статус: MVP реализован; фактические проверки и оставшиеся ограничения отражены в README и `docs/demo-scenario.md`
 
 Исходное задание: `тема.pdf`
 
@@ -729,7 +729,7 @@ HTTP server получает конечные read/header/write/idle timeouts и
 - Envoy controller ready, Gateway `Programmed=True`, HTTPRoute `Accepted=True`/`ResolvedRefs=True`;
 - Gatekeeper webhook ready;
 - Argo child apps Healthy;
-- безопасный metadata annotation drift системного Deployment исправляется Argo CD без изменения image или replica count.
+- безопасный drift управляемого replica count системного Deployment (1 → 2 → 1) исправляется Argo CD без изменения image и без прерывания маршрутизации.
 
 ### Этап 6. Политики
 

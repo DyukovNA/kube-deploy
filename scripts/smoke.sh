@@ -8,8 +8,8 @@ base=http://kube-deploy.local:8080
 curl_args=(--noproxy '*' --resolve kube-deploy.local:8080:127.0.0.1 --fail-with-body --silent --show-error --max-time 10)
 
 page="$(curl "${curl_args[@]}" "$base/")"
-if [[ "$page" != *'KubeDeploy'* ]]; then
-  printf 'Frontend page did not contain the expected title\n' >&2
+if [[ "$page" != *'class="initial-shell"'* || "$page" != *'window.__reactRouterContext'* ]]; then
+  printf 'Frontend page did not contain the expected React Router SPA shell\n' >&2
   exit 1
 fi
 curl "${curl_args[@]}" "$base/api/health/ready" | jq -e '.status == "ok"' >/dev/null
