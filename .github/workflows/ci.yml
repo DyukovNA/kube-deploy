@@ -89,6 +89,9 @@ jobs:
           docker build --check apps/frontend
           docker build -t kubedeploy-backend:ci apps/backend
           docker build -t kubedeploy-frontend:ci apps/frontend
+          docker run --rm --security-opt no-new-privileges --cap-drop ALL \
+            --read-only --tmpfs /tmp kubedeploy-frontend:ci \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: Install pinned Trivy
         run: |
           mkdir -p .tools/bin .tools/trivy-download

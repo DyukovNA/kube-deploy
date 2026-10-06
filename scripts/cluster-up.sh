@@ -4,7 +4,14 @@ set -Eeuo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 if k3d cluster list --no-headers | awk '$1 == "kube-deploy" { found = 1 } END { exit !found }'; then
-  printf '%s\n' 'Cluster kube-deploy already exists; checking access'
+  if ! kubectl --context k3d-kube-deploy get nodes >/dev/null 2>&1; then
+    printf '%s\n' 'Cluster kube-deploy exists but is stopped; starting it'
+    docker info >/dev/null
+    k3d cluster start kube-deploy
+  else
+    printf '%s\n' 'Cluster kube-deploy already exists and is running'
+  fi
+  kubectl --context k3d-kube-deploy wait --for=condition=Ready nodes --all --timeout=180s
   kubectl --context k3d-kube-deploy get nodes -o name
   exit 0
 fi

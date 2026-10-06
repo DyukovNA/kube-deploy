@@ -15,6 +15,10 @@ LABEL org.opencontainers.image.source=$SOURCE_URL \
 ENV XDG_CONFIG_HOME=/tmp/caddy-config XDG_DATA_HOME=/tmp/caddy-data
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY --from=builder /src/build/client /srv
+# The upstream image grants cap_net_bind_service to Caddy for ports 80/443.
+# This application listens on 8080, and Kubernetes correctly refuses to exec a
+# file with capabilities when allowPrivilegeEscalation=false/no_new_privs is set.
+RUN setcap -r /usr/bin/caddy
 USER 10001:10001
 EXPOSE 8080
 CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
