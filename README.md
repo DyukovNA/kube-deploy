@@ -63,7 +63,7 @@ make smoke REVISION="$(git rev-parse HEAD)"
 - `demo-drift` безопасно меняет replica count Envoy Gateway с 1 на 2 и ждёт, пока Argo CD вернёт Git-state.
 - `cluster-down` удаляет только кластер `kube-deploy` и отказывается работать при другом current context.
 
-Пошаговый сценарий защиты находится в [docs/demo-scenario.md](docs/demo-scenario.md), устранение типовых сбоев — в [docs/troubleshooting.md](docs/troubleshooting.md).
+Пошаговый сценарий защиты находится в [docs/demo-scenario.md](docs/demo-scenario.md), фактический прогон — в [evidence за 2026-10-07](docs/evidence/2026-10-07-e2e.md), устранение типовых сбоев — в [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ## Статус требований
 
