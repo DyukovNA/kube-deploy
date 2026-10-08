@@ -2,7 +2,7 @@
 
 Локальная учебная платформа декларативного развёртывания в Kubernetes. Git и Argo CD управляют системным слоем, Score генерирует ресурсы frontend/backend, Helm развёртывает PostgreSQL, а Gatekeeper блокирует небезопасные workload.
 
-Рабочий контур проверен 7 октября 2026 года: CI и Release завершены успешно, образы опубликованы в GHCR с SBOM/provenance/attestations, все Argo CD Application находятся в `Synced/Healthy`, приложение доступно через Envoy Gateway, smoke пишет и читает данные PostgreSQL, Gatekeeper отклоняет три класса нарушений, а Argo CD устраняет контролируемый drift.
+Рабочий контур проверен 7 октября 2026 года, в том числе полным прогоном с созданием чистого кластера: CI и Release завершены успешно, образы опубликованы в GHCR с SBOM/provenance/attestations, все Argo CD Application находятся в `Synced/Healthy`, приложение доступно через Envoy Gateway, smoke пишет и читает данные PostgreSQL, Gatekeeper отклоняет три класса нарушений, а Argo CD устраняет контролируемый drift.
 
 ## Архитектура
 
