@@ -11,7 +11,8 @@ if [[ ! "$remote" =~ ^https://github\.com/[^/]+/[^/]+\.git$ ]]; then
 fi
 github_repo="${remote#https://github.com/}"
 github_repo="${github_repo%.git}"
-visibility="$(gh repo view "$github_repo" --json visibility --jq .visibility)"
+visibility="$(retry_capture 'GitHub repository visibility lookup' \
+  gh repo view "$github_repo" --json visibility --jq .visibility)"
 if [[ "$visibility" != PUBLIC ]]; then
   printf 'Private Git remotes need explicit Argo CD repository credentials; bootstrap stopped\n' >&2
   exit 1
@@ -25,7 +26,8 @@ fi
 test -z "$(git -C "$PROJECT_ROOT" status --porcelain)" || {
   printf 'Commit local changes before bootstrap\n' >&2; exit 1;
 }
-remote_head="$(git ls-remote "$remote" refs/heads/main | awk '{print $1}')"
+remote_ref="$(retry_capture 'origin/main lookup' git ls-remote "$remote" refs/heads/main)"
+remote_head="$(awk '{print $1}' <<<"$remote_ref")"
 test -n "$remote_head" && test "$remote_head" = "$(git -C "$PROJECT_ROOT" rev-parse HEAD)" || {
   printf 'Push the current commit to origin/main before bootstrap\n' >&2; exit 1;
 }

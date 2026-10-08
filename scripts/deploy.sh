@@ -22,14 +22,15 @@ else
   exit 1
 fi
 repository="$owner/$repo_name"
-gh repo view "$repository" --json nameWithOwner --jq .nameWithOwner >/dev/null
+retry_command 'GitHub repository lookup' \
+  gh repo view "$repository" --json nameWithOwner --jq .nameWithOwner >/dev/null
 test "$(git -C "$PROJECT_ROOT" rev-parse HEAD)" = "$revision" || {
   printf 'Checked-out HEAD must match IMAGE_TAG commit\n' >&2; exit 1;
 }
 test -z "$(git -C "$PROJECT_ROOT" status --porcelain)" || {
   printf 'Working tree must be clean for a reproducible deploy\n' >&2; exit 1;
 }
-git -C "$PROJECT_ROOT" fetch --quiet origin main
+retry_command 'origin/main fetch' git -C "$PROJECT_ROOT" fetch --quiet origin main
 git -C "$PROJECT_ROOT" merge-base --is-ancestor "$revision" origin/main || {
   printf 'Release commit is not in origin/main\n' >&2; exit 1;
 }
@@ -50,42 +51,10 @@ for app in kube-deploy-envoy-crds kube-deploy-envoy-gateway kube-deploy-gatekeep
     }
 done
 
-inspect_digest_with_retry() {
+inspect_digest() {
   local tag_ref="$1"
-  local attempt digest
-  for attempt in 1 2 3 4 5; do
-    if digest="$(docker buildx imagetools inspect "$tag_ref" --format '{{json .}}' |
-      jq -er '.manifest.digest')" && [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]; then
-      printf '%s\n' "$digest"
-      return 0
-    fi
-    if ((attempt < 5)); then
-      printf 'Digest lookup for %s failed (attempt %d/5); retrying in 5s\n' \
-        "$tag_ref" "$attempt" >&2
-      sleep 5
-    fi
-  done
-  printf 'Failed to resolve a valid manifest digest for %s after 5 attempts\n' "$tag_ref" >&2
-  return 1
-}
-
-verify_attestation_with_retry() {
-  local digest_ref="$1"
-  local attempt
-  for attempt in 1 2 3 4 5; do
-    if gh attestation verify "oci://$digest_ref" --repo "$repository" \
-      --source-digest "$revision" --source-ref refs/heads/main \
-      --signer-workflow "$repository/.github/workflows/release.yml" >/dev/null; then
-      return 0
-    fi
-    if ((attempt < 5)); then
-      printf 'Attestation verification for %s failed (attempt %d/5); retrying in 5s\n' \
-        "$digest_ref" "$attempt" >&2
-      sleep 5
-    fi
-  done
-  printf 'Attestation verification failed for %s after 5 attempts\n' "$digest_ref" >&2
-  return 1
+  docker buildx imagetools inspect "$tag_ref" --format '{{json .}}' |
+    jq -er '.manifest.digest'
 }
 
 image_base="ghcr.io/${repository,,}"
@@ -93,9 +62,16 @@ frontend_image=''
 backend_image=''
 for component in frontend backend; do
   tag_ref="$image_base-$component:$image_tag"
-  digest="$(inspect_digest_with_retry "$tag_ref")"
+  digest="$(retry_capture "Manifest digest lookup for $tag_ref" inspect_digest "$tag_ref")"
+  [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]] || {
+    printf 'Invalid manifest digest for %s\n' "$tag_ref" >&2
+    exit 1
+  }
   digest_ref="$image_base-$component@$digest"
-  verify_attestation_with_retry "$digest_ref"
+  retry_command "Attestation verification for $digest_ref" \
+    gh attestation verify "oci://$digest_ref" --repo "$repository" \
+    --source-digest "$revision" --source-ref refs/heads/main \
+    --signer-workflow "$repository/.github/workflows/release.yml" >/dev/null
   case "$component" in
     frontend) frontend_image="$digest_ref" ;;
     backend) backend_image="$digest_ref" ;;
